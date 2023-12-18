@@ -32,18 +32,19 @@ func md4PadMessage(message []byte) ([]byte) {
 func md4(message []byte) ([]byte) {
 	paddedMessage := md4PadMessage(message)
 
+	numBlocks := len(paddedMessage) / 64
+
 	A := uint32(0x67452301)
 	B := uint32(0xefcdab89)
 	C := uint32(0x98badcfe)
 	D := uint32(0x10325476)
 
-	numBlocks := len(paddedMessage) / 64
-
-	X := make([]uint32, 16)
+	var X [16]uint32
 
 	for i := 0; i < numBlocks; i++ {
 		for j := 0; j < 16; j++ {
-			X[j] = binary.LittleEndian.Uint32(paddedMessage[(i * 64) + (j * 4):])
+			X[j] = binary.LittleEndian.Uint32(
+				paddedMessage[(i * 64) + (j * 4):])
 		}
 
 		AA := A
@@ -73,41 +74,20 @@ func md4(message []byte) ([]byte) {
 			B = (B << 13) | (B >> (32 - 13))
 		}
 
-		A += (B ^ C ^ D) + X[0] + 0x6ED9EBA1
-		A = (A << 3) | (A >> (32 - 3))
-		D += (A ^ B ^ C) + X[8] + 0x6ED9EBA1
-		D = (D << 9) | (D >> (32 - 9))
-		C += (D ^ A ^ B) + X[4] + 0x6ED9EBA1
-		C = (C << 11) | (C >> (32 - 11))
-		B += (C ^ D ^ A) + X[12] + 0x6ED9EBA1
-		B = (B << 15) | (B >> (32 - 15))
+		r3x := func(l uint32) uint32 {
+			return ((l & 0x1) << 3) | ((l & 0x2) << 1) | ((l & 0x4) >> 1) | ((l & 0x8) >> 3)
+		}
 
-		A += (B ^ C ^ D) + X[2] + 0x6ED9EBA1
-		A = (A << 3) | (A >> (32 - 3))
-		D += (A ^ B ^ C) + X[10] + 0x6ED9EBA1
-		D = (D << 9) | (D >> (32 - 9))
-		C += (D ^ A ^ B) + X[6] + 0x6ED9EBA1
-		C = (C << 11) | (C >> (32 - 11))
-		B += (C ^ D ^ A) + X[14] + 0x6ED9EBA1
-		B = (B << 15) | (B >> (32 - 15))
-
-		A += (B ^ C ^ D) + X[1] + 0x6ED9EBA1
-		A = (A << 3) | (A >> (32 - 3))
-		D += (A ^ B ^ C) + X[9] + 0x6ED9EBA1
-		D = (D << 9) | (D >> (32 - 9))
-		C += (D ^ A ^ B) + X[5] + 0x6ED9EBA1
-		C = (C << 11) | (C >> (32 - 11))
-		B += (C ^ D ^ A) + X[13] + 0x6ED9EBA1
-		B = (B << 15) | (B >> (32 - 15))
-
-		A += (B ^ C ^ D) + X[3] + 0x6ED9EBA1
-		A = (A << 3) | (A >> (32 - 3))
-		D += (A ^ B ^ C) + X[11] + 0x6ED9EBA1
-		D = (D << 9) | (D >> (32 - 9))
-		C += (D ^ A ^ B) + X[7] + 0x6ED9EBA1
-		C = (C << 11) | (C >> (32 - 11))
-		B += (C ^ D ^ A) + X[15] + 0x6ED9EBA1
-		B = (B << 15) | (B >> (32 - 15))
+		for j := 0; j < 4; j++ {
+			A += (B ^ C ^ D) + X[r3x(uint32(j * 4))] + 0x6ED9EBA1
+			A = (A << 3) | (A >> (32 - 3))
+			D += (A ^ B ^ C) + X[r3x(uint32(j * 4) + 1)] + 0x6ED9EBA1
+			D = (D << 9) | (D >> (32 - 9))
+			C += (D ^ A ^ B) + X[r3x(uint32(j * 4) + 2)] + 0x6ED9EBA1
+			C = (C << 11) | (C >> (32 - 11))
+			B += (C ^ D ^ A) + X[r3x(uint32(j * 4) + 3)] + 0x6ED9EBA1
+			B = (B << 15) | (B >> (32 - 15))
+		}
 
 		A = AA + A
 		B = BB + B
